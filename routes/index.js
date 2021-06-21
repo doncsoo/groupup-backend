@@ -4,6 +4,9 @@ const UIDGenerator = require('uid-generator');
 var MongoClient = require('mongodb').MongoClient;
 var ObjectId = require('mongodb').ObjectId; 
 const uidgen = new UIDGenerator();
+const base64 = require('node-base64-image');
+const path = require('path')
+const fs = require('fs')
 
 let tokens = []
 
@@ -82,6 +85,7 @@ async function updateMongoDB(collectionName, queryJson, updateJson) {
   await client.connect();
   const collection = client.db("groupup").collection(collectionName);
   let result = await collection.update(queryJson, updateJson)
+  console.log(result)
   await client.close();
   return result
 }
@@ -162,6 +166,15 @@ router.get('/who/:token', async function(req, res) {
   res.status(200).json(result);
 });
 
+//preview
+router.get('/preview/:eventid', async function(req, res) {
+  let result = await queryMongoDB("previews", {eventid: req.params.eventid})
+  console.log(result[0].base64)
+  await base64.decode(result[0].base64, { fname: 'decoded', ext: 'jpg' });
+  res.status(200).sendFile(path.join(__dirname,'../decoded.jpg'))
+  fs.unlink(path.join(__dirname,'../decoded.jpg'))
+});
+
 //users obj
 router.put('/users', async function(req, res) {
   json = req.body
@@ -184,7 +197,7 @@ router.patch('/users', async function(req, res) {
   let userid = lookUpToken(json.token).userid
   if(userid == undefined) res.status(403).send("Invalid token")
   let result = await updateMongoDB("users", {_id: ObjectId(userid)}, {$set: json.property})
-  if(result.result.ok == 1) res.status(204).json();
+  if(result.result.ok == 1) res.status(204).send();
   else res.status(400).send("Update failed");
 });
 
@@ -209,9 +222,9 @@ router.post('/respond', async function(req, res) {
   json = req.body
   userid = lookUpToken(json.token).userid
   if(!userid) res.status(401).send("Unauthorized")
-  await otherUpdateMongoDB("events", {_id: ObjectId(json.eventid)}, { $set: { "attendants.$[person].response": Boolean(json.response) } },
-  { arrayFilters: [  { "person.id": userid } ], multi: true})
-  res.status(204).send()
+  await otherUpdateMongoDB("events", {_id: ObjectId(json.eventid)}, { $set: { "attendants.$[person].response": json.response } },
+  { arrayFilters: [  { "person.userid": ObjectId(userid) } ], multi: true})
+  res.status(204).json();
 });
 
 

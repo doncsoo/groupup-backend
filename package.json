@@ -6,6 +6,8 @@
     "start": "node ./bin/www"
   },
   "dependencies": {
+    "b64-to-file": "^1.0.4",
+    "b64-to-image": "^1.0.2",
     "body-parser": "^1.19.0",
     "cookie-parser": "~1.4.4",
     "cors": "^2.8.5",
@@ -15,6 +17,7 @@
     "jade": "~1.11.0",
     "mongodb": "^3.6.9",
     "morgan": "~1.9.1",
+    "node-base64-image": "^2.0.3",
     "uid-generator": "^2.0.0"
   }
 }
