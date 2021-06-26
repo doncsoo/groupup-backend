@@ -17,6 +17,20 @@ function lookUpToken(token)
   {
     if(tokendata.token == token) return tokendata;
   }
+  return {}
+}
+
+async function isParticipant(eventid, userid)
+{
+  let result = await queryMongoDB("events", {_id: ObjectId(eventid)})
+  for(let person of result[0].attendants)
+  {
+    let userid_str = String(person.userid)
+    console.log("1:" + userid_str + " 2:" + userid)
+    console.log(userid_str == userid)
+    if(userid_str == userid) return true
+  }
+  return false
 }
 
 let eventsTemplate = 
@@ -231,8 +245,17 @@ router.post('/respond', async function(req, res) {
     return
   }
   else userid = lookUpToken(json.token).userid
-  await otherUpdateMongoDB("events", {_id: ObjectId(json.eventid)}, { $set: { "attendants.$[person].response": json.response } },
-  { arrayFilters: [  { "person.userid": ObjectId(userid) } ], multi: true})
+  let isParticip = await isParticipant(json.eventid, userid)
+  if(isParticip == true) {
+    console.log("Is participant - updating resp")
+    await otherUpdateMongoDB("events", {_id: ObjectId(json.eventid)}, { $set: { "attendants.$[person].response": json.response } },
+    { arrayFilters: [  { "person.userid": ObjectId(userid) } ], multi: true})
+  }
+  else
+  {
+    console.log("Not participant - adding")
+    await otherUpdateMongoDB("events", {_id: ObjectId(json.eventid)}, { $push: { attendants: {userid: ObjectId(userid), response: json.response} } })
+  }
   res.status(204).json();
 });
 
