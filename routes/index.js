@@ -95,6 +95,7 @@ async function otherUpdateMongoDB(collectionName, queryJson, updateJson, filterJ
   const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
   await client.connect();
   const collection = client.db("groupup").collection(collectionName);
+  console.log(updateJson)
   await collection.updateMany(queryJson, updateJson, filterJson)
   await client.close();
   console.log("Update completed")
@@ -194,8 +195,12 @@ router.put('/users', async function(req, res) {
 router.patch('/users', async function(req, res) {
   json = req.body
   console.log(json)
-  let userid = lookUpToken(json.token).userid
-  if(userid == undefined) res.status(403).send("Invalid token")
+  if(lookUpToken(json.token) == undefined)
+  {
+    res.status(401).send("Unauthorized")
+    return
+  }
+  else userid = lookUpToken(json.token).userid
   let result = await updateMongoDB("users", {_id: ObjectId(userid)}, {$set: json.property})
   if(result.result.ok == 1) res.status(204).send();
   else res.status(400).send("Update failed");
@@ -220,12 +225,40 @@ router.post('/auth', async function(req, res) {
 //{token, eventid, response}
 router.post('/respond', async function(req, res) {
   json = req.body
-  userid = lookUpToken(json.token).userid
-  if(!userid) res.status(401).send("Unauthorized")
+  if(lookUpToken(json.token) == undefined)
+  {
+    res.status(401).send("Unauthorized")
+    return
+  }
+  else userid = lookUpToken(json.token).userid
   await otherUpdateMongoDB("events", {_id: ObjectId(json.eventid)}, { $set: { "attendants.$[person].response": json.response } },
   { arrayFilters: [  { "person.userid": ObjectId(userid) } ], multi: true})
   res.status(204).json();
 });
+
+//{token, eventid, index}
+router.post('/vote', async function(req, res) {
+  json = req.body
+  if(lookUpToken(json.token) == undefined)
+  {
+    res.status(401).send("Unauthorized")
+    return
+  }
+  else userid = lookUpToken(json.token).userid
+  let keyName = "voting.replies." + json.index  + ".votes"
+  await otherUpdateMongoDB("events", {_id: ObjectId(json.eventid)}, { $inc: { [keyName]: 1 } }, null)
+  res.status(204).json();
+});
+
+//
+//invalidate user token
+// {token}
+router.post('/logout', async function(req, res) {
+  json = req.body
+  console.log(json)
+  res.status(418).send("Not yet implemented, so im a teapot")
+});
+
 
 
 module.exports = router;
