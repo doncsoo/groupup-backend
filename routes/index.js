@@ -161,7 +161,7 @@ router.get('/events', async function(req, res) {
 
 //get user data of attendants
 // {list: []}
-router.get('/users/attendants', async function(req, res) {
+router.post('/users/attendants', async function(req, res) {
   json = req.body
   for(let i = 0; i < json.list.length; i++) json.list[i] = ObjectId(json.list[i])
   let result = await queryMongoDB("users", { _id: { $in: json.list}})
