@@ -154,9 +154,18 @@ router.get('/users', async function(req, res) {
   res.status(200).json(result);
 });
 
-//query all events
-router.get('/events', async function(req, res) {
-  let result = await queryMongoDB("events")
+router.get('/users', async function(req, res) {
+  let result = await queryMongoDB("users")
+  res.status(200).json(result);
+});
+
+//get user data of attendants
+// {list: []}
+router.get('/users/attendants', async function(req, res) {
+  json = req.body
+  for(let i = 0; i < json.list.length; i++) json.list[i] = ObjectId(json.list[i])
+  let result = await queryMongoDB("users", { _id: { $in: json.list}})
+  for(let person of result) delete person["password"]
   res.status(200).json(result);
 });
 
@@ -209,7 +218,7 @@ router.put('/users', async function(req, res) {
 router.patch('/users', async function(req, res) {
   json = req.body
   console.log(json)
-  if(lookUpToken(json.token) == undefined)
+  if(lookUpToken(json.token) == {})
   {
     res.status(401).send("Unauthorized")
     return
@@ -239,7 +248,7 @@ router.post('/auth', async function(req, res) {
 //{token, eventid, response}
 router.post('/respond', async function(req, res) {
   json = req.body
-  if(lookUpToken(json.token) == undefined)
+  if(lookUpToken(json.token) == {})
   {
     res.status(401).send("Unauthorized")
     return
@@ -262,7 +271,7 @@ router.post('/respond', async function(req, res) {
 //{token, eventid, index}
 router.post('/vote', async function(req, res) {
   json = req.body
-  if(lookUpToken(json.token) == undefined)
+  if(lookUpToken(json.token) == {})
   {
     res.status(401).send("Unauthorized")
     return
@@ -278,8 +287,17 @@ router.post('/vote', async function(req, res) {
 // {token}
 router.post('/logout', async function(req, res) {
   json = req.body
-  console.log(json)
-  res.status(418).send("Not yet implemented, so im a teapot")
+  for(let i = 0; i < tokens.length; i++)
+  {
+    if(tokens[i].token = json.token)
+    {
+      delete tokens[i]
+      tokens = tokens.filter(e => e != null)
+      break
+    }
+  }
+  console.log(tokens)
+  res.status(204).send()
 });
 
 
