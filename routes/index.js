@@ -33,6 +33,13 @@ async function isParticipant(eventid, userid)
   return false
 }
 
+async function checkIfVoted(eventid, userid)
+{
+  let result = await queryMongoDB("events", {_id: ObjectId(eventid)})
+  let userid_str = String(userid)
+  return result[0].voting.voted.includes(userid_str)
+}
+
 let eventsTemplate = 
 [
   {
@@ -278,7 +285,12 @@ router.post('/vote', async function(req, res) {
   }
   else userid = lookUpToken(json.token).userid
   let keyName = "voting.replies." + json.index  + ".votes"
-  await otherUpdateMongoDB("events", {_id: ObjectId(json.eventid)}, { $inc: { [keyName]: 1 } }, null)
+  if(await checkIfVoted(json.eventid, userid) == true)
+  {
+    res.status(403).send("Already voted")
+    return
+  }
+  await otherUpdateMongoDB("events", {_id: ObjectId(json.eventid)}, { $inc: { [keyName]: 1 }, $push: {"voting.voted": String(userid)} }, null)
   res.status(204).json();
 });
 
