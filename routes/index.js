@@ -40,6 +40,18 @@ async function checkIfVoted(eventid, userid)
   return result[0].voting.voted.includes(userid_str)
 }
 
+async function checkIfVaccinated(eventid, userid)
+{
+  let result = await queryMongoDB("events", {_id: ObjectId(eventid)})
+  if(result[0].info.vaccinationRequired == true)
+  {
+    let userresult = await queryMongoDB("users", {_id: ObjectId(userid)})
+    return userresult[0].vaccinated != false
+  }
+  else return true
+}
+
+
 let eventsTemplate = 
 [
   {
@@ -243,6 +255,10 @@ router.post('/auth', async function(req, res) {
   console.log(json)
   if(!json.username || !json.password) res.status(400).send({auth: false, error: "Invalid request"})
   let result = await queryMongoDB("users", {username: json.username})
+  if(result.length == 0)
+  {
+    res.status(401).json({auth: false, error: "User doesnt exist"})
+  }
   if(result[0].password == json.password)
   {
     let gentoken = await uidgen.generate()
@@ -261,6 +277,12 @@ router.post('/respond', async function(req, res) {
     return
   }
   else userid = lookUpToken(json.token).userid
+  let isVaccinated = await checkIfVaccinated(json.eventid, userid)
+  if(isVaccinated == false)
+  {
+    res.status(403).send("Not vaccinated")
+    return
+  }
   let isParticip = await isParticipant(json.eventid, userid)
   if(isParticip == true) {
     console.log("Is participant - updating resp")
@@ -272,7 +294,7 @@ router.post('/respond', async function(req, res) {
     console.log("Not participant - adding")
     await otherUpdateMongoDB("events", {_id: ObjectId(json.eventid)}, { $push: { attendants: {userid: ObjectId(userid), response: json.response} } })
   }
-  res.status(204).json();
+  res.status(204).send();
 });
 
 //{token, eventid, index}
