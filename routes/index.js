@@ -213,9 +213,9 @@ router.get('/who/:token', async function(req, res) {
 router.get('/preview/:eventid', async function(req, res) {
   let result = await queryMongoDB("previews", {eventid: req.params.eventid})
   console.log(result[0].base64)
-  await base64.decode(result[0].base64, { fname: 'decoded', ext: 'jpg' });
-  res.status(200).sendFile(path.join(__dirname,'../decoded.jpg'))
-  fs.unlink(path.join(__dirname,'../decoded.jpg'))
+  await base64.decode(result[0].base64, { fname: req.params.eventid, ext: 'jpg' });
+  res.status(200).sendFile(path.join(__dirname,`../${req.params.eventid}.jpg`))
+  fs.unlink(path.join(__dirname,`../${req.params.eventid}.jpg`))
 });
 
 //users obj
