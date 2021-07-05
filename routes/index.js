@@ -51,6 +51,12 @@ async function checkIfVaccinated(eventid, userid)
   else return true
 }
 
+async function checkIfOwner(eventid, userid)
+{
+  let result = await queryMongoDB("events", {_id: ObjectId(eventid)})
+  let userid_str = String(userid)
+  return String(result[0].owner) == userid_str 
+}
 
 let eventsTemplate = 
 [
@@ -196,11 +202,11 @@ router.get('/events/:eventid', async function(req, res) {
 
 //insert event
 //{"title":"Test Event","timestamp":"2021-06-06T14:38:04+00:00"}
+//for full event obj see mongodb
 router.put('/events', async function(req, res) {
-  res.status(501).send("Not yet available")
-  //json = req.body
-  //let result = await insertMongoDB("users", json)
-  //res.status(200).json(result);
+  json = req.body
+  let result = await insertMongoDB("events", json)
+  res.status(201).json(result);
 });
 
 //query who has this token
@@ -332,6 +338,47 @@ router.post('/logout', async function(req, res) {
   }
   console.log(tokens)
   res.status(204).send()
+});
+
+//{token, eventid, message}
+router.post('/announce', async function(req, res) {
+  json = req.body
+  if(lookUpToken(json.token) == {})
+  {
+    res.status(401).send("Unauthorized")
+    return
+  }
+  else userid = lookUpToken(json.token).userid
+  if(await checkIfOwner(json.eventid, userid) == false)
+  {
+    res.status(403).send("Not permitted - not owner of this event")
+    return
+  }
+  await otherUpdateMongoDB("events", {_id: ObjectId(json.eventid)}, { $push: { announcements: {message: json.message, timestamp: new Date().toISOString()} } }, null)
+  res.status(204).json();
+});
+
+//{token, eventid, question, options}
+router.post('/eventset/voting', async function(req, res) {
+  json = req.body
+  if(lookUpToken(json.token) == {})
+  {
+    res.status(401).send("Unauthorized")
+    return
+  }
+  else userid = lookUpToken(json.token).userid
+  if(await checkIfOwner(json.eventid, userid) == false)
+  {
+    res.status(403).send("Not permitted - not owner of this event")
+    return
+  }
+  let allreplies = []
+  for(let option of json.options)
+  {
+    allreplies.push({name: option, votes: 0})
+  }
+  await otherUpdateMongoDB("events", {_id: ObjectId(json.eventid)}, { $set: { voting: {question: json.question, replies: allreplies, voted: []} } }, null)
+  res.status(204).json();
 });
 
 
