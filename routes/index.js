@@ -190,6 +190,12 @@ router.get('/users', async function(req, res) {
   res.status(200).json(result);
 });
 
+//search for user
+router.get('/users/search/:search', async function(req, res) {
+  let result = await queryMongoDB("users", {fullname: {$regex: req.params.search}})
+  res.status(200).json(result);
+});
+
 router.get('/events', async function(req, res) {
   let result = await queryMongoDB("events")
   res.status(200).json(result);
