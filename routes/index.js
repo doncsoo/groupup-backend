@@ -118,6 +118,17 @@ async function insertMongoDB(collectionName, json) {
   return jsonresult.insertedId
 }
 
+async function deleteMongoDB(collectionName, filter) {
+  const uri = "mongodb+srv://Express:jYE57Zx0MdDh654t@groupupcluster.m4dxg.mongodb.net/groupup?retryWrites=true&w=majority";
+  const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+  await client.connect();
+  const collection = client.db("groupup").collection(collectionName);
+  let jsonresult = null;
+  jsonresult = await collection.deleteMany(filter)
+  await client.close();
+  return jsonresult.deletedCount
+}
+
 async function updateMongoDB(collectionName, queryJson, updateJson) {
   const uri = "mongodb+srv://Express:jYE57Zx0MdDh654t@groupupcluster.m4dxg.mongodb.net/groupup?retryWrites=true&w=majority";
   const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
@@ -206,6 +217,24 @@ router.get('/events/:eventid', async function(req, res) {
 router.put('/events', async function(req, res) {
   json = req.body
   let result = await insertMongoDB("events", json)
+  res.status(201).json(result);
+});
+
+//{token, eventid}
+router.delete('/events', async function(req, res) {
+  json = req.body
+  if(lookUpToken(json.token) == {})
+  {
+    res.status(401).send("Unauthorized")
+    return
+  }
+  else userid = lookUpToken(json.token).userid
+  if(await checkIfOwner(json.eventid, userid) == false)
+  {
+    res.status(403).send("Not permitted - not owner of this event")
+    return
+  }
+  let result = await deleteMongoDB("events", {_id: ObjectId(json.eventid)})
   res.status(201).json(result);
 });
 
@@ -381,6 +410,27 @@ router.post('/eventset/voting', async function(req, res) {
   res.status(204).json();
 });
 
-
+//{token, eventid, [invited]}
+router.post('/invite', async function(req, res) {
+  json = req.body
+  if(lookUpToken(json.token) == {})
+  {
+    res.status(401).send("Unauthorized")
+    return
+  }
+  else userid = lookUpToken(json.token).userid
+  if(await checkIfOwner(json.eventid, userid) == false)
+  {
+    res.status(403).send("Not permitted - not owner of this event")
+    return
+  }
+  let allnewattendants = []
+  for(let inv_userid of json.invited)
+  {
+    allnewattendants.push({userid: ObjectId(inv_userid), response: null})
+  }
+  await otherUpdateMongoDB("events", {_id: ObjectId(json.eventid)}, { $push: { attendants: {$each: allnewattendants} } }, null)
+  res.status(204).json();
+});
 
 module.exports = router;
