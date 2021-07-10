@@ -187,12 +187,14 @@ router.get('/', function(req, res, next) {
 //query all users
 router.get('/users', async function(req, res) {
   let result = await queryMongoDB("users")
+  for(let person of result) delete person["password"]
   res.status(200).json(result);
 });
 
 //search for user
 router.get('/users/search/:search', async function(req, res) {
   let result = await queryMongoDB("users", {fullname: {$regex: req.params.search}})
+  for(let person of result) delete person["password"]
   res.status(200).json(result);
 });
 
